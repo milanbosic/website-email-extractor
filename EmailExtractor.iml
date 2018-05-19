@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library" exported="">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/Downloads/xmlbeans-2.6.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" exported="">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/Downloads/commons-collections4-4.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" exported="">
+      <library>
+        <CLASSES>
+          <root url="file://C:/Program Files/JetBrains/poi-3.17" />
+        </CLASSES>
+        <JAVADOC>
+          <root url="file://C:/Program Files/JetBrains/poi-3.17/docs/apidocs" />
+        </JAVADOC>
+        <SOURCES />
+        <jarDirectory url="file://C:/Program Files/JetBrains/poi-3.17" recursive="false" />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" exported="">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/Downloads/jsoup-1.11.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library" exported="">
+      <library>
+        <CLASSES>
+          <root url="file://C:/Program Files/JetBrains/commons-validator-1.6" />
+        </CLASSES>
+        <JAVADOC>
+          <root url="file://C:/Program Files/JetBrains/commons-validator-1.6/apidocs" />
+        </JAVADOC>
+        <SOURCES>
+          <root url="file://C:/Program Files/JetBrains/commons-validator-1.6" />
+        </SOURCES>
+        <jarDirectory url="file://C:/Program Files/JetBrains/commons-validator-1.6" recursive="false" />
+        <jarDirectory url="file://C:/Program Files/JetBrains/commons-validator-1.6" recursive="false" type="SOURCES" />
+      </library>
+    </orderEntry>
+  </component>
+</module>
