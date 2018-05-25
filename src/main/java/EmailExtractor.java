@@ -4,20 +4,21 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+import org.openqa.selenium.By;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class EmailExtractor {
     private String url;
+    public static WebDriver driver;
 
     private EmailExtractor(String url) {
         this.url = url;
@@ -31,19 +32,20 @@ public class EmailExtractor {
         UrlValidator urlValidator = new UrlValidator();
 
         /*RegEx pattern used for finding emails*/
-        Pattern p = Pattern.compile("\\b[\\w.%-]+@[-.\\w]+\\.[A-Za-z]{2,4}\\b");
+        Pattern p = Pattern.compile("(?!\\S*\\.(?:jpg|png|gif|bmp)(?:[\\s\\n\\r]|$))\\b[\\w.%-]+@[-.\\w]+\\.[A-Za-z]{2,4}\\b");
 
         /*open a connection to the website and fetch its HTML*/
         try {
 
-            Document doc = fetchHTMLDocument(url);
-            emails = checkForEmails(doc, p);
+            WebDriver driver = fetchHTMLDriver(url);
+            emails = checkForEmails(driver, p);
+            String sourceHTML = driver.getPageSource();
 
             /*if body length or header size is smaller than the given number, HTML probably failed to be fetched
              * or the website is dead*/
-            if (doc.body() != null && doc.head() != null) {
+            if (sourceHTML != null) {
 
-                if (doc.body().toString().length() < 1000 && doc.head().toString().length() < 500) {
+                if (sourceHTML.length() < 20 || !sourceHTML.toLowerCase().contains("frame")) {
                     System.out.println("Probably invalid HTML");
                     emails.add("dead URL");
                 }
@@ -52,67 +54,87 @@ public class EmailExtractor {
             /*if no emails have been found in the base URL, check the links that contain keywords,
              * such as 'contact' or' 'about'
              */
+            String linktemp = driver.getCurrentUrl().toLowerCase();
+            if (linktemp.contains("domain") || linktemp.contains("newvcorp") || linktemp.contains("afternic") || linktemp.contains("undeveloped")
+                    || linktemp.contains("godaddy") || linktemp.contains("hostgator") || linktemp.contains("bluehost") || linktemp.contains("uniregistry")){
+                emails.add("dead URL");
+            }
+
             if (emails.isEmpty()) {
-                Elements links = doc.select("a[href]");
+                List<WebElement> allLinks = driver.findElements(By.tagName("a"));
 
-                for (Element link : links) {
-                    String currentText = link.text();
-                    String currentLink = link.attr("href");
-                    String temp = currentText.toLowerCase() + currentLink.toLowerCase();
-                    if (temp.contains("contact") || temp.contains("location") || temp.contains("about")) {
+                try {
+                    for (WebElement link : allLinks) {
+                        String currentText = link.getText();
+                        if (currentText == null) {
+                            currentText = "empty";
+                        }
+                        String currentLink = link.getAttribute("href");
+                        if (currentLink == null) {
+                            currentLink = "empty";
+                        }
+                        String temp = currentText.toLowerCase() + currentLink.toLowerCase();
+                        if (temp.contains("contact") || temp.contains("location") || temp.contains("about") || temp.contains("connect") || temp.contains("welcome")) {
 
-                        if (urlValidator.isValid(currentLink)) {
-                            System.out.println("Found valid URL, adding: " + currentLink);
-                            urls.add(currentLink);
-                        } else {
-                            System.out.println("Found invalid URL, need to concatenate: " + currentLink);
-                            Connection.Response response = Jsoup.connect(url).followRedirects(true).execute();
-                            System.out.println("Response url: " + response.url());
+                            if (urlValidator.isValid(currentLink)) {
+                                System.out.println("Found valid URL, adding: " + currentLink);
+                                urls.add(currentLink);
+                            } else {
+                                System.out.println("Found invalid URL, need to concatenate: " + currentLink);
+                                Connection.Response response = Jsoup.connect(url).followRedirects(true).execute();
+                                System.out.println("Response url from jsoup: " + response.url());
 
-                            String responseURL = response.url().toString();
-                            HashSet<String> allurls = new HashSet<>();
+                                String responseURL = driver.getCurrentUrl();
+                                System.out.println("Response url from selenium: " + responseURL);
+                                HashSet<String> allurls = new HashSet<>();
 
-                            String concatenatedURL = concatenateURL(responseURL, currentLink);
-                            if (urlValidator.isValid(concatenatedURL)) {
-                                allurls.add(concatenatedURL);
-                            }
-
-                            if (responseURL.contains("index")) {
-                                System.out.println("Base URL contains 'index', removing...");
-                                responseURL = responseURL.split("index")[0];
-                                concatenatedURL = concatenateURL(responseURL, currentLink);
-                                allurls.add(concatenatedURL);
-                            } else if (responseURL.contains("home")) {
-                                System.out.println("Base URL contains 'home', removing...");
-                                responseURL = responseURL.split("home")[0];
-                                concatenatedURL = concatenateURL(responseURL, currentLink);
-                                allurls.add(concatenatedURL);
-                            }
-
-                            for (String str : allurls) {
-                                System.out.println("Concatenated URL in HashSet: " + str);
-                                if (urlValidator.isValid(str)) {
-                                    urls.add(str);
+                                String concatenatedURL = concatenateURL(responseURL, currentLink);
+                                if (urlValidator.isValid(concatenatedURL)) {
+                                    allurls.add(concatenatedURL);
                                 }
 
-                            }
-                        }
+                                if (responseURL.contains("index")) {
+                                    System.out.println("Base URL contains 'index', removing...");
+                                    responseURL = responseURL.split("index")[0];
+                                    concatenatedURL = concatenateURL(responseURL, currentLink);
+                                    allurls.add(concatenatedURL);
+                                } else if (responseURL.contains("home")) {
+                                    System.out.println("Base URL contains 'home', removing...");
+                                    responseURL = responseURL.split("home")[0];
+                                    concatenatedURL = concatenateURL(responseURL, currentLink);
+                                    allurls.add(concatenatedURL);
+                                }
 
+                                for (String str : allurls) {
+                                    System.out.println("Concatenated URL in HashSet: " + str);
+                                    if (urlValidator.isValid(str)) {
+                                        urls.add(str);
+                                    }
+
+                                }
+                            }
+
+                        }
                     }
+
+                } catch (StaleElementReferenceException e) {
+                    e.printStackTrace();
                 }
+
+
             }
 
             if (!urls.isEmpty()) {
                 for (String url : urls) {
                     System.out.println("Current url being checked: " + url);
-                    try {
-                        doc = fetchHTMLDocument(url);
+                    driver = fetchHTMLDriver(url);
 
-                        emails = checkForEmails(doc, p);
+                    HashSet<String> temp = checkForEmails(driver, p);
 
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    if (!temp.isEmpty()) {
+                        emails.addAll(temp);
                     }
+
                 }
             }
 
@@ -137,34 +159,21 @@ public class EmailExtractor {
 
     }
 
-    private Document fetchHTMLDocument(String url) throws IOException {
-        Connection.Response response = Jsoup.connect(url)
-                .header("Accept-Encoding", "gzip, deflate")
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36")
-                .referrer("http://www.google.com")
-                .maxBodySize(0)
-                .timeout(80000)
-                .followRedirects(true)
-                .execute();
-        return response.parse();
+    private WebDriver fetchHTMLDriver(String url) {
+
+        driver.get(url);
+        return driver;
 
     }
 
-    private HashSet<String> checkForEmails(Document doc, Pattern p) {
+    private HashSet<String> checkForEmails(WebDriver driver, Pattern p) {
         HashSet<String> emails = new HashSet<>();
         Matcher matcher;
 
         String stringMatcher = "empty";
 
-        if (doc.head() != null) {
-            stringMatcher = doc.head().toString();
-        }
-        if (doc.body() != null) {
-            stringMatcher = stringMatcher + doc.body().toString();
-        }
-
-        if (doc.text() != null) {
-            stringMatcher = stringMatcher + doc.text();
+        if (driver.getPageSource() != null) {
+            stringMatcher = driver.getPageSource();
         }
 
         matcher = p.matcher(stringMatcher);
@@ -197,6 +206,12 @@ public class EmailExtractor {
     }
 
     public static void main(String[] args) {
+        System.setProperty("webdriver.chrome.driver", "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chromedriver.exe");
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("headless");
+        options.addArguments("window-size=1200x600");
+
+        driver = new ChromeDriver(options);
 
         try {
             /*open input stream and access the .xlsx file and its sheet*/
@@ -210,7 +225,7 @@ public class EmailExtractor {
             System.out.println("Enter column number to write emails to (A=0, B=1, etc.): ");
             int columnEmails = scanner.nextInt();
             System.out.println("Enter the starting row: ");
-            int startingRow = scanner.nextInt();
+            int startingRow = scanner.nextInt() - 1;
             System.out.println("Enter the number of rows to process: ");
             int numberOfRows = scanner.nextInt();
             int adjustedNumberOfRows = startingRow + numberOfRows;
